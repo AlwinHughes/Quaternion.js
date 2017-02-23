@@ -64,16 +64,40 @@
 
       // Check for arrays
       if (w.length === 4) {
-        dest['w'] = w[0];
-        dest['x'] = w[1];
-        dest['y'] = w[2];
-        dest['z'] = w[3];
+        if (w[0].length === 4) {
+          if (checkFor4x4Matrix(w)) {
+            dest['w'] = w[0][0];
+            dest['x'] = -w[0][1];
+            dest['y'] = -w[0][2];
+            dest['z'] = -w[0][3];
+          } else {
+            throw "cant convert matrix to quaternion";
+          }
+        } else {
+          dest['w'] = w[0];
+          dest['x'] = w[1];
+          dest['y'] = w[2];
+          dest['z'] = w[3];
+        }
         return;
       }
 
       // if a modulus, argument and unit vecor as passed in
       if (typeof w === 'object' && 'mod' in w && 'arg' in w && 'unit' in w &&
         ('x' in w.unit && 'y' in w.unit && 'z' in w.unit && ( !('w' in w.unit) || w.unit.w === 0))) {
+        /*
+         * quaternion can be represented in modulus argument form like:
+         *
+         * q = |q|(sin(t) + n * cos(t))
+         *
+         * where:
+         *  q = a + bi + cj + dk = a + v
+         *  n = v/|v|
+         *  t = arccos(a/|q|)
+         *
+         * here the mod is passed in as a, the arg as b and the unit vector as c
+         */
+
         dest['w'] = w.mod * Math.cos(w.arg);
         var sinarg = Math.sin(w.arg);
         dest['x'] = sinarg * w.mod * w.unit['x'];
@@ -200,6 +224,42 @@
       ret += char;
     }
     return ret;
+  }
+
+  function checkFor4x4Matrix(a) {
+    /*
+     * for a real 4x4 matrix to be converted to a quaternion (a + bi + cj + dk) it must take the form:
+     *
+     *      a -b -c -d
+     *      b  a -d  c
+     * M =  c  d  a -b
+     *      d -c  b  a
+     *
+     * easiest check is to check that array[i][j] === -array[j][i] unless i==j
+     * and that the lead diagonal elements are all equal
+     */
+
+    var a;
+    if (!Array.isArray(a)) {
+      return false
+    }
+
+    if (!(Array.isArray(a)) || (a.length !== 4)) {
+      return false;
+    }
+
+    for (var i = 0; i < 4; i++) {
+      if (!(Array.isArray(a[i])) || a[i].length !== 4) {
+        return false;
+      } else {
+        for (var j = 0; j < 4; j++) {
+          if (typeof a[i][j] !== 'number') {
+            return false;
+          }
+        }
+      }
+    }
+    return true;
   }
 
   /**
@@ -899,6 +959,76 @@
       var arg = Math.acos(this['w']/n);
       var unit = new Quaternion(0, this.x * vn, this.y * vn, this.z * vn);
       return {mod: n, arg: arg, unit: unit};
+    },
+
+    'round': function (places) {
+      if (typeof places === 'undefined' || places < 0 || Math.round(places) !== places){
+        places = 1;
+      } else {
+        places = Math.pow(10,places);
+      }
+
+      return new Quaternion(
+        Math.round(this.w*places)/places, Math.round(this.x*places)/places,
+        Math.round(this.y*places)/places, Math.round(this.z*places)/places
+      );
+    },
+
+    'ceil': function (places) {
+      if (typeof places === 'undefined' || places < 0 || Math.round(places) !== places){
+        places = 1;
+      } else {
+        places = Math.pow(10,places);
+      }
+
+      return new Quaternion(
+        Math.ceil(this.w*places)/places, Math.ceil(this.x*places)/places,
+        Math.ceil(this.y*places)/places, Math.ceil(this.z*places)/places
+      );
+    },
+
+    'floor': function(places) {
+      if (typeof places === 'undefined' || places < 0 || Math.round(places) !== places){
+        places = 1;
+      } else {
+        places = Math.pow(10,places);
+      }
+
+      return new Quaternion(
+        Math.floor(this.w*places)/places, Math.floor(this.x*places)/places,
+        Math.floor(this.y*places)/places, Math.floor(this.z*places)/places
+      );
+    },
+
+    'fix': function () {
+      return new Quaternion(
+        (this.w > 0) ? Math.floor(this.w): Math.ceil(this.w),
+        (this.x > 0) ? Math.floor(this.x): Math.ceil(this.x),
+        (this.y > 0) ? Math.floor(this.y): Math.ceil(this.y),
+        (this.z > 0) ? Math.floor(this.z): Math.ceil(this.z));
+
+    },
+
+    'dotDivide': function (a,b,c,d) {
+      return new Quaternion(this.w/a, this.x/b, this.y/c, this.z/d);
+    },
+
+    'dotPow': function (a) {
+      if ( (a % 1 !== 0 && a < 0) &&
+        (this.w < 0 || this.x < 0 || this.y < 0 || this.z < 0)) {
+        throw "invalid power";
+      }
+      return new Quaternion(Math.pow(this.w,a), Math.pow(this.x,a),
+        Math.pow(this.y,a), Math.pow(this.z,a));
+    },
+
+    'toMatrix4x4' : function () {
+      return [
+        [this.w, -this.x, -this.y, -this.z],
+        [this.x, this.w, -this.z, this.y],
+        [this.y, this.z, this.w, -this.x],
+        [this.z, -this.y, this.x, this.w]
+      ];
     }
 
 
