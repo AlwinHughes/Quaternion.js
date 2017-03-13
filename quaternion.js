@@ -813,7 +813,7 @@
     },
 
     'ln' : function () {
-      if (this.x === 0 && this.y === 0 && this.z === 0) {
+      if (this.x === 0 && this.y === 0 && this.z === 0 && ! this.w < 0) {
         return new Quaternion(Math.log(x),0,0,0);
       } else {
 
@@ -823,10 +823,18 @@
         var acos = Math.acos(this['w'] / n);
 
         var w = Math.log(n);
-        var x = acos * this['x'] * vn;
-        var y = acos * this['y'] * vn;
-        var z = acos * this['z'] * vn;
+        var x;
+        var y = 0;
+        var z = 0;
 
+
+        if(isFinite(vn)) {
+          x = acos * this['x'] * vn;
+          y = acos * this['y'] * vn;
+          z = acos * this['z'] * vn;
+        } else {
+          x = Math.PI;
+        }
         return new Quaternion(w, x, y, z);
       }
     },
@@ -855,11 +863,12 @@
       }
       else if (Number.isInteger(w) && x === 0 && y === 0 && z === 0) {
         // if the imput quaternion is a integer and the rest of the quaternion components are 0
-        var q = this;
+        var q = this.clone();
         if (w < 0 ) {
           q = q.inverse()
           w = -w;
         }
+
 
         var w1 = q['w'];
         var x1 = q['x'];
@@ -922,9 +931,23 @@
         var acos = Math.acos(this['w'] / n);
 
         var w1 = Math.log(n);
-        var x1 = acos * this['x'] * vn;
-        var y1 = acos * this['y'] * vn;
-        var z1 = acos * this['z'] * vn;
+        var x1;
+        var y1 = 0;
+        var z1 = 0;
+
+
+        if(isFinite(vn)) {
+          x1 = acos * this['x'] * vn;
+          y1 = acos * this['y'] * vn;
+          z1 = acos * this['z'] * vn;
+        } else {
+          x1 = Math.PI;
+        }
+
+        // var w1 = Math.log(n);
+        // var x1 = acos * this['x'] * vn;
+        // var y1 = acos * this['y'] * vn;
+        // var z1 = acos * this['z'] * vn;
 
         // multiplies log base e of this by the exponent
         var w2 = w1 * w - x1 * x - y1 * y - z1 * z;
@@ -955,58 +978,12 @@
     'toModArgUnitForm' : function () {
       var vn = Math.pow(this['x'] * this['x'] + this['y'] * this['y'] +
        this['z'] * this['z'], -0.5);
+
+      vn = (vn === Infinity) ? 1: vn;
       var n = Math.hypot(this['w'], this['x'], this['y'], this['z']);
       var arg = Math.acos(this['w']/n);
       var unit = new Quaternion(0, this.x * vn, this.y * vn, this.z * vn);
       return {mod: n, arg: arg, unit: unit};
-    },
-
-    'round': function (places) {
-      if (typeof places === 'undefined' || places < 0 || Math.round(places) !== places){
-        places = 1;
-      } else {
-        places = Math.pow(10,places);
-      }
-
-      return new Quaternion(
-        Math.round(this.w*places)/places, Math.round(this.x*places)/places,
-        Math.round(this.y*places)/places, Math.round(this.z*places)/places
-      );
-    },
-
-    'ceil': function (places) {
-      if (typeof places === 'undefined' || places < 0 || Math.round(places) !== places){
-        places = 1;
-      } else {
-        places = Math.pow(10,places);
-      }
-
-      return new Quaternion(
-        Math.ceil(this.w*places)/places, Math.ceil(this.x*places)/places,
-        Math.ceil(this.y*places)/places, Math.ceil(this.z*places)/places
-      );
-    },
-
-    'floor': function(places) {
-      if (typeof places === 'undefined' || places < 0 || Math.round(places) !== places){
-        places = 1;
-      } else {
-        places = Math.pow(10,places);
-      }
-
-      return new Quaternion(
-        Math.floor(this.w*places)/places, Math.floor(this.x*places)/places,
-        Math.floor(this.y*places)/places, Math.floor(this.z*places)/places
-      );
-    },
-
-    'fix': function () {
-      return new Quaternion(
-        (this.w > 0) ? Math.floor(this.w): Math.ceil(this.w),
-        (this.x > 0) ? Math.floor(this.x): Math.ceil(this.x),
-        (this.y > 0) ? Math.floor(this.y): Math.ceil(this.y),
-        (this.z > 0) ? Math.floor(this.z): Math.ceil(this.z));
-
     },
 
     'dotDivide': function (a,b,c,d) {
